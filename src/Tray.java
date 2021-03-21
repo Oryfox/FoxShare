@@ -20,7 +20,11 @@ public class Tray {
             trayIcon.addMouseListener(new MouseAdapter() {
                 @Override
                 public void mouseClicked(MouseEvent e) {
-                    if (e.getButton() == 3) new MainFrame();
+                    if (System.getProperty("os.name").toLowerCase().contains("win")) {
+                        if (e.getButton() == 1) new MainFrame();
+                    } else {
+                        if (e.getButton() == 3) new MainFrame();
+                    }
                 }
             });
 
