@@ -15,13 +15,17 @@ public class MainFrame extends JFrame {
         basePanel = new JPanel(new GridLayout(0,1));
         basePanel.setBackground(Color.white);
 
-        basePanel.add(new RoundedButton(FoxShare.bundle.getString("toggleReceiving"), e -> {
-            Contact.receiving = !Contact.receiving;
-            if (Contact.receiving)
-                Tray.toggleReceiving.setLabel(FoxShare.bundle.getString("disableReceiving"));
-            else
-                Tray.toggleReceiving.setLabel(FoxShare.bundle.getString("enableReceiving"));
-        }, OryColors.BLUE));
+        JPanel receiverPanel = new JPanel(new GridLayout(1,0));
+        receiverPanel.setOpaque(false);
+        receiverPanel.add(new RoundedButton(FoxShare.bundle.getString("enableReceiving"), e -> {
+            Contact.receiving = true;
+            Tray.trayIcon.setImage(Tray.greenFox);
+        },OryColors.GREEN,22));
+        receiverPanel.add(new RoundedButton(FoxShare.bundle.getString("disableReceiving"), e -> {
+            Contact.receiving = true;
+            Tray.trayIcon.setImage(Tray.redFox);
+        },OryColors.RED,22));
+        basePanel.add(receiverPanel);
 
         basePanel.add(new RoundedButton(FoxShare.bundle.getString("sendFiles"), e -> Sender.startSending(), OryColors.BLUE));
 
@@ -30,6 +34,7 @@ public class MainFrame extends JFrame {
         this.add(basePanel);
         this.setSize(500,300);
         this.setVisible(true);
+        this.toFront();
         frame = this;
     }
 
@@ -38,6 +43,7 @@ public class MainFrame extends JFrame {
         hostNames.setBackground(Color.white);
         this.remove(basePanel);
         this.add(hostNames);
+        this.setTitle(FoxShare.bundle.getString("selectDest"));
         SwingUtilities.updateComponentTreeUI(this);
     }
 }

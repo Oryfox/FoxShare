@@ -1,5 +1,8 @@
 import javax.crypto.spec.SecretKeySpec;
+import javax.swing.*;
+import java.awt.*;
 import java.io.*;
+import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.file.Files;
@@ -46,6 +49,7 @@ public class Contact {
             outputStream.write(encryptedFileData);
             outputStream.close();
             socket.close();
+            Tray.trayIcon.displayMessage("FoxShare", fileName + " " + FoxShare.bundle.getString("sent"), TrayIcon.MessageType.INFO);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -60,7 +64,9 @@ public class Contact {
                     Socket socket = serverSocket.accept();
 
                     DataInputStream inputStream = new DataInputStream(socket.getInputStream());
-                    String[] utf = inputStream.readUTF().split("<->"); //Action<->AES-Key<->Filename<->EncryptedData
+                    String utfRaw = inputStream.readUTF();
+                    System.out.println(utfRaw);
+                    String[] utf = utfRaw.split("<->"); //Action<->AES-Key<->Filename<->EncryptedData
 
                     switch (utf[0]) {
                         case "GET_PUBLIC_KEY": {
@@ -82,7 +88,9 @@ public class Contact {
                                 socket.close();
 
                                 SecretKeySpec aesKey = new SecretKeySpec(Crypto.decryptAesKey(Crypto.local.getPrivate(), Base64.getDecoder().decode(utf[1])), "AES");
-                                Files.write(new File(System.getProperty("user.home") + "/Downloads/" + new String(Crypto.decryptFile(aesKey, Base64.getDecoder().decode(utf[2])))).toPath(), Crypto.decryptFile(aesKey, byteArrayOutputStream.toByteArray()));
+                                String filename = new String(Crypto.decryptFile(aesKey, Base64.getDecoder().decode(utf[2])));
+                                Files.write(new File(System.getProperty("user.home") + "/Downloads/" + filename).toPath(), Crypto.decryptFile(aesKey, byteArrayOutputStream.toByteArray()));
+                                Tray.trayIcon.displayMessage("FoxShare", filename + " " + FoxShare.bundle.getString("received"), TrayIcon.MessageType.INFO);
                             } else {
                                 inputStream.close();
                                 socket.close();
@@ -91,7 +99,7 @@ public class Contact {
                         break;
                         case "PING": {
                             DataOutputStream outputStream = new DataOutputStream(socket.getOutputStream());
-                            if (receiving) {
+                            if (receiving && !socket.getInetAddress().getHostAddress().equals(InetAddress.getLocalHost().getHostAddress())) {
                                 outputStream.writeUTF("RESPONSE");
                             } else {
                                 outputStream.writeUTF("OFFLINE");
@@ -120,7 +128,17 @@ public class Contact {
                     if (inputStream.readUTF().equals("RESPONSE")) {
                         Contact.availableHosts.add(socket.getInetAddress().getHostName());
                         {
-                            MainFrame.frame.hostNames.add(new RoundedButton(socket.getInetAddress().getHostName(), e -> Contact.send(socket.getInetAddress().getHostAddress(),Sender.files), OryColors.YELLOW));
+                            MainFrame.frame.hostNames.add(new RoundedButton(socket.getInetAddress().getHostName(), e -> {
+                                Contact.send(socket.getInetAddress().getHostAddress(),Sender.files);
+                                if (SystemTray.isSupported()) MainFrame.frame.setVisible(false);
+                                else {
+                                    MainFrame.frame.remove(MainFrame.frame.hostNames);
+                                    MainFrame.frame.add(MainFrame.frame.basePanel);
+                                    MainFrame.frame.setTitle("FoxShare");
+                                    SwingUtilities.updateComponentTreeUI(MainFrame.frame);
+                                }
+                            }, OryColors.YELLOW));
+                            MainFrame.frame.hostNames.updateUI();
                         }
                     }
                 } catch (IOException ignored) {

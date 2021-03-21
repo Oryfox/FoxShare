@@ -9,12 +9,14 @@ public class Sender {
         FileDialog fileDialog = new FileDialog(MainFrame.frame);
         fileDialog.setDirectory(System.getProperty("user.home"));
         fileDialog.setMultipleMode(true);
-        fileDialog.setTitle("Select Files to send");
+        fileDialog.setTitle(FoxShare.bundle.getString("selectFiles"));
         fileDialog.setVisible(true);
         files = fileDialog.getFiles();
 
-        Contact.availableHosts.clear();
-        new MainFrame().sender();
-        Contact.startPing();
+        if (files != null && files.length > 0) {
+            Contact.availableHosts.clear();
+            new MainFrame().sender();
+            Contact.startPing();
+        }
     }
 }

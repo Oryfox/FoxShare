@@ -7,6 +7,8 @@ public class FoxShare {
 
     static ResourceBundle bundle;
 
+    final static String version = "1.0";
+
     public static void main(String[] args) throws AWTException {
         System.setProperty("apple.awt.UIElement", "true");
 
