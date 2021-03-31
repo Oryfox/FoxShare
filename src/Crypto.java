@@ -7,49 +7,49 @@ import java.security.spec.X509EncodedKeySpec;
 
 public class Crypto {
 
-    static KeyPair local = generateKeyPair();
+    static KeyPair local = genRsaKeyPair();
 
-    public static byte[] encryptAesKey(PublicKey publicKey, byte[] aesKey) {
+    public static byte[] encryptWithRSA(PublicKey publicKey, byte[] content) {
         try {
             Cipher cipher = Cipher.getInstance("RSA");
             cipher.init(Cipher.ENCRYPT_MODE, publicKey);
-            return cipher.doFinal(aesKey);
+            return cipher.doFinal(content);
         } catch (NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException | IllegalBlockSizeException | BadPaddingException e) {
             throw new RuntimeException(e);
         }
     }
 
-    public static byte[] decryptAesKey(PrivateKey privateKey, byte[] aesKey) {
+    public static byte[] decryptWithRSA(PrivateKey privateKey, byte[] content) {
         try {
             Cipher cipher = Cipher.getInstance("RSA");
             cipher.init(Cipher.DECRYPT_MODE, privateKey);
-            return cipher.doFinal(aesKey);
+            return cipher.doFinal(content);
         } catch (IllegalBlockSizeException | BadPaddingException | NoSuchPaddingException | NoSuchAlgorithmException | InvalidKeyException e) {
             throw new RuntimeException(e);
         }
     }
 
-    public static byte[] encryptFile(Key key, byte[] fileData) {
+    public static byte[] encryptWithAES(Key key, byte[] content) {
         try {
             Cipher cipher = Cipher.getInstance("AES");
             cipher.init(Cipher.ENCRYPT_MODE, key);
-            return cipher.doFinal(fileData);
+            return cipher.doFinal(content);
         } catch (IllegalBlockSizeException | BadPaddingException | NoSuchPaddingException | NoSuchAlgorithmException | InvalidKeyException e) {
             throw new RuntimeException(e);
         }
     }
 
-    public static byte[] decryptFile(Key key, byte[] fileData) {
+    public static byte[] decryptWithAES(Key key, byte[] content) {
         try {
             Cipher cipher = Cipher.getInstance("AES");
             cipher.init(Cipher.DECRYPT_MODE, key);
-            return cipher.doFinal(fileData);
+            return cipher.doFinal(content);
         } catch (IllegalBlockSizeException | BadPaddingException | NoSuchPaddingException | NoSuchAlgorithmException | InvalidKeyException e) {
             throw new RuntimeException(e);
         }
     }
 
-    public static Key getAESKey() {
+    public static Key genAesKey() {
         try {
             KeyGenerator generator = KeyGenerator.getInstance("AES");
             generator.init(128);
@@ -77,7 +77,7 @@ public class Crypto {
         }
     }
 
-    public static KeyPair generateKeyPair() {
+    public static KeyPair genRsaKeyPair() {
         try {
             KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
             generator.initialize(1024);

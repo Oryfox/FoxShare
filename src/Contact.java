@@ -37,15 +37,15 @@ public class Contact {
     }
 
     public static void send(String ip, String fileName, byte[] fileData) {
-        Key key = Crypto.getAESKey();
+        Key key = Crypto.genAesKey();
 
-        String encryptedKey = Base64.getEncoder().encodeToString(Crypto.encryptAesKey(Crypto.getPublicKey(ip),key.getEncoded()));
-        byte[] encryptedFileData = Crypto.encryptFile(key,fileData);
+        String encryptedKey = Base64.getEncoder().encodeToString(Crypto.encryptWithRSA(Crypto.getPublicKey(ip),key.getEncoded()));
+        byte[] encryptedFileData = Crypto.encryptWithAES(key,fileData);
 
         try {
             Socket socket = new Socket(ip, PORT);
             DataOutputStream outputStream = new DataOutputStream(socket.getOutputStream());
-            outputStream.writeUTF("SEND_FILE<->" + encryptedKey + "<->" + Base64.getEncoder().encodeToString(Crypto.encryptFile(key,fileName.getBytes())));
+            outputStream.writeUTF("SEND_FILE<->PlaceHolderName<->" + encryptedKey + "<->" + Base64.getEncoder().encodeToString(Crypto.encryptWithAES(key,fileName.getBytes())));
             outputStream.write(encryptedFileData);
             outputStream.close();
             socket.close();
@@ -87,9 +87,9 @@ public class Contact {
                                 inputStream.close();
                                 socket.close();
 
-                                SecretKeySpec aesKey = new SecretKeySpec(Crypto.decryptAesKey(Crypto.local.getPrivate(), Base64.getDecoder().decode(utf[1])), "AES");
-                                String filename = new String(Crypto.decryptFile(aesKey, Base64.getDecoder().decode(utf[2])));
-                                Files.write(new File(System.getProperty("user.home") + "/Downloads/" + filename).toPath(), Crypto.decryptFile(aesKey, byteArrayOutputStream.toByteArray()));
+                                SecretKeySpec aesKey = new SecretKeySpec(Crypto.decryptWithRSA(Crypto.local.getPrivate(), Base64.getDecoder().decode(utf[1])), "AES");
+                                String filename = new String(Crypto.decryptWithAES(aesKey, Base64.getDecoder().decode(utf[2])));
+                                Files.write(new File(System.getProperty("user.home") + "/Downloads/" + filename).toPath(), Crypto.decryptWithAES(aesKey, byteArrayOutputStream.toByteArray()));
                                 Tray.trayIcon.displayMessage("FoxShare", filename + " " + FoxShare.bundle.getString("received"), TrayIcon.MessageType.INFO);
                             } else {
                                 inputStream.close();

@@ -11,6 +11,7 @@ public class MainFrame extends JFrame {
         super("FoxShare");
         if (frame != null) frame.setVisible(false);
         if (!SystemTray.isSupported()) this.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+        frame.setIconImage(Tray.redFox);
 
         basePanel = new JPanel(new GridLayout(0,1));
         basePanel.setBackground(Color.white);
