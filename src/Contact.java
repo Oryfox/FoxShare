@@ -45,7 +45,7 @@ public class Contact {
         try {
             Socket socket = new Socket(ip, PORT);
             DataOutputStream outputStream = new DataOutputStream(socket.getOutputStream());
-            outputStream.writeUTF("SEND_FILE<->PlaceHolderName<->" + encryptedKey + "<->" + Base64.getEncoder().encodeToString(Crypto.encryptWithAES(key,fileName.getBytes())));
+            outputStream.writeUTF("SEND_FILE<->" + encryptedKey + "<->" + Base64.getEncoder().encodeToString(Crypto.encryptWithAES(key,fileName.getBytes())));
             outputStream.write(encryptedFileData);
             outputStream.close();
             socket.close();

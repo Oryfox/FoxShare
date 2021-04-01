@@ -1,25 +1,37 @@
-import java.net.*;
 import java.io.*;
-import java.nio.charset.StandardCharsets;
-import java.util.List;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.net.SocketException;
+import java.security.KeyFactory;
+import java.security.NoSuchAlgorithmException;
+import java.security.PublicKey;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.X509EncodedKeySpec;
 import java.util.ArrayList;
-import java.util.Map;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
-public class Server implements Runnable
-{
+public class Server implements Runnable {
     static List<Socket> sockets = new ArrayList<>();
-    static Map<String,Server> socketMap = new HashMap<>();
+    static Map<String, Server> socketMap = new HashMap<String, Server>() {
+        @Override
+        public Server remove(Object key) {
+            System.out.println("Removed " + key);
+            return super.remove(key);
+        }
+    };
 
     Socket socket;
     DataInputStream in;
     DataOutputStream out;
+    PublicKey publicKey;
 
     final static int PORT = 25032;
 
     static boolean running;
 
-    public static void main(String [] args) throws IOException {
+    public static void main(String[] args) throws IOException {
         running = true;
         ServerSocket serverSocket = new ServerSocket(PORT);
 
@@ -28,8 +40,7 @@ public class Server implements Runnable
         }
     }
 
-    public Server(Socket socket)
-    {
+    public Server(Socket socket) {
         this.socket = socket;
         sockets.add(socket);
     }
@@ -41,8 +52,8 @@ public class Server implements Runnable
         } catch (IOException ioException) {
             ioException.printStackTrace();
         }
-        while (!socket.isClosed() && in != null && out != null) {
-            try {
+        try {
+            while (!socket.isClosed() && in != null && out != null) {
                 System.out.println(socket.getInetAddress().getHostAddress() + ": waiting for command");
                 String rawUTF = in.readUTF();
                 String[] splitArguments = rawUTF.split("<->"); //Command<->Receiver<->Encrypted AES Key<->ContentHeader/FileName --> Content as byte array
@@ -53,6 +64,9 @@ public class Server implements Runnable
                         if (socketMap.containsKey(splitArguments[1])) {
                             out.writeUTF("NOT_REGISTERED");
                         } else {
+                            byte[] bytes = new byte[1024];
+                            in.read(bytes);
+                            this.publicKey = KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(bytes));
                             socketMap.put(splitArguments[1], this);
                             out.writeUTF("REGISTERED");
                         }
@@ -62,7 +76,7 @@ public class Server implements Runnable
                     case "PING": {
                         out.writeUTF("PONG");
                         out.flush();
-                        System.out.println("PING REACHED");
+                        System.out.println("PING FROM " + socket.getInetAddress().getHostAddress() + " REACHED");
                     }
                     break;
                     case "UNREGISTER": {
@@ -80,11 +94,15 @@ public class Server implements Runnable
                             DataOutputStream remoteOut = socketMap.get(splitArguments[1]).out;
                             remoteOut.writeUTF(rawUTF);
 
+                            System.out.println("?");
                             byte[] buffer = new byte[16*1024];
-                            int count;
-                            while ((count = in.read(buffer)) > 0) {
-                                remoteOut.write(buffer,0,count);
+                            int len;
+                            while ((len = in.read(buffer)) > 0) {
+                                System.out.println("??");
+                                System.out.println(len);
+                                remoteOut.write(buffer, 0, len);
                             }
+                            System.out.println("!");
                         }
                     }
                     break;
@@ -92,36 +110,40 @@ public class Server implements Runnable
                         DataOutputStream outRemote = socketMap.get(splitArguments[1]).out;
                         outRemote.writeUTF("GET_PUBLIC");
                         DataInputStream inRemote = socketMap.get(splitArguments[1]).in;
-                        byte[] buffer = new byte[16*1024];
+                        byte[] buffer = new byte[16 * 1024];
                         int count;
                         while ((count = inRemote.read(buffer)) > 0) {
-                            out.write(buffer,0,count);
+                            out.write(buffer, 0, count);
                         }
                         out.flush();
                     }
                     break;
                     case "GET_RECEIVERS": {
-                        List<String> list = new ArrayList<>(socketMap.keySet());
-                        StringBuilder allReceivers = new StringBuilder();
-                        for (String s : list) allReceivers.append(s).append(";");
-                        String string  = allReceivers.toString();
-                        if (string.equalsIgnoreCase("")) string = "NO_RECEIVERS";
-                        DataOutputStream out = new DataOutputStream(socket.getOutputStream());
-                        out.write(string.getBytes(StandardCharsets.UTF_8));
+                        out.writeUTF("RECEIVERS");
+                        HashMap<String, PublicKey> receivers = new HashMap<>();
+                        for (String s : socketMap.keySet()) {
+                            receivers.put(s,socketMap.get(s).publicKey);
+                        }
+                        ObjectOutputStream objectOut = new ObjectOutputStream(socket.getOutputStream());
+                        objectOut.writeObject(receivers);
                         out.flush();
                     }
                     break;
                 }
-            } catch (IOException e) {
-                if (e instanceof SocketException) {
-                    try {
-                        socket.close();
-                    } catch (IOException ioException) {
-                        ioException.printStackTrace();
+            }
+        } catch (IOException | NoSuchAlgorithmException | InvalidKeySpecException e) {
+            e.printStackTrace();
+            if (e instanceof SocketException || e instanceof EOFException) {
+                try {
+                    for (String s : socketMap.keySet()) {
+                        if (socketMap.get(s).socket == socket) socketMap.remove(s);
+                        break;
                     }
-                    e.printStackTrace();
-                    System.out.println("Closed stream");
+                    socket.close();
+                } catch (IOException ioException) {
+                    ioException.printStackTrace();
                 }
+                System.out.println("Closed stream");
             }
         }
     }
